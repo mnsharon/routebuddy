@@ -2,22 +2,9 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
 import { routes } from "@/data/routes";
 
-// fix marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-});
-
+// Dynamically import Leaflet components (SSR safe)
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
@@ -41,7 +28,23 @@ const Popup = dynamic(
 export default function MapView({ selected }: { selected: string }) {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+
+    // Load leaflet only on client
+    import("leaflet").then((L) => {
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+        iconUrl:
+          "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+      });
+    });
+  }, []);
 
   if (!mounted) return null;
 
@@ -65,6 +68,7 @@ export default function MapView({ selected }: { selected: string }) {
             <Popup>
               <div className="text-center">
                 <p className="font-semibold">{user.name}</p>
+
                 <p className="text-green-600 text-sm">
                   {user.type === "walk" && "🌿 Walk"}
                   {user.type === "bike" && "🚴 Ride"}
